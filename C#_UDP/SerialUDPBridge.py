@@ -7,7 +7,7 @@ from threading import Thread
 def recvUDP(sock,SerialIOArduino):
     while True:
         data, addr = sock.recvfrom(1280) # Max recieve size is 1280 bytes
-        print "UDP received message:", data.strip()
+       # print "UDP received message:", data.strip()
         SerialIOArduino.write(data)
     
 

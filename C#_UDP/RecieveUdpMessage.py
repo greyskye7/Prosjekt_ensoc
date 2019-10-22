@@ -8,4 +8,6 @@ sock.bind((UDP_IP, UDP_PORT))
 while True:
     data, addr = sock.recvfrom(1280) # Max recieve size is 1280 bytes
     print "received message:", data
+    if(int(data) == 100):
+        print "H"
    

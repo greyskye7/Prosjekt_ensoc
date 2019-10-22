@@ -79,7 +79,7 @@ while True:
 
         #Determine how many pixels do you want to detect to be considered "Movement"
         
-        if (frameCount > 1 and count > 2000):
+        if (frameCount > 1 and count > 30000):
             print('Bevegelse')
             cv2.putText(resizedFrame, 'Bevegelse', (10,50),\
             cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2, cv2.LINE_AA)

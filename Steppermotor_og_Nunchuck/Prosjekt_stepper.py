@@ -32,24 +32,23 @@ while True:
     while(myInput == True):
         data, addr = sock.recvfrom(1280) # Max recieve size is 1280 bytes
         print "Verdi:", data
-        if(int(data) == 0):
+        
+        if(int(data) == 1000):
             SerialIOmbed.write("1\n")
-        elif(int(data) == 2):
+        elif(int(data) == 100):
             SerialIOmbed.write("2\n")
-        elif(int(data) == 3):
+        elif(int(data) == 10):
             SerialIOmbed.write("3\n")
-        elif(int(data) == 4):
+        elif(int(data) == 01):
             SerialIOmbed.write("4\n")
         elif(int(data) == 5):
-            break
+            SerialIOmbed.write("5\n")
         else:
             SerialIOmbed.write("0\n")
+            break
         
-
     if(myInput == False):
-        
-        try:
-                    
+        try:      
             bus.write_byte(address, 0x00)
             time.sleep(0.1)
             data0 = bus.read_byte(address)
