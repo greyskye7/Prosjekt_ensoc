@@ -64,16 +64,7 @@ while(1):
         if k == ord('q'):
             print("Video avsluttet")
             break
-        elif (frameCount > 1 and count > 150000):
-            GPIO.output(17, GPIO.HIGH)
-            print("Innbrudd")
-            cv2.putText(resizedFrame, 'Innbrudd', (10,50),\
-            cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2, cv2.LINE_AA)
-            pygame.mixer.init()
-            pygame.mixer.music.load("Alarm.mp3")
-            pygame.mixer.music.play()
-            while pygame.mixer.music.get_busy() == True:
-                continue
+       
     else:
         GPIO.output(17, GPIO.LOW)
         print("Alarm er avskrudd")
