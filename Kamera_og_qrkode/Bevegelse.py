@@ -9,7 +9,7 @@ GPIO.setup(18, GPIO.IN)
 GPIO.setup(17, GPIO.OUT)
 
 #Video capture
-capture = cv2.VideoCapture(0)
+capture = cv2.VideoCapture(1)
 
 #History, Threshold, DetectShadows
 fgbg = cv2.createBackgroundSubtractorMOG2(50,200,True)#Tar vekk bakgrunn og viser

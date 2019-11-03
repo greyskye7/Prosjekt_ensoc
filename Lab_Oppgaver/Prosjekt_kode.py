@@ -14,9 +14,11 @@ import pyzbar.pyzbar as pyzbar
 
 
 
-
 app = Flask(__name__)
 vc = cv2.VideoCapture(0)
+fgbg = cv2.createBackgroundSubtractorMOG2(50,200,True)
+
+
 
 UDP_IP = "0.0.0.0"
 UDP_PORT = 9010
@@ -98,14 +100,42 @@ def loop2():
 
 
 
-#def loop3():
+def loop3():
+    frameCount = 0
+    while True:
+        ret, frame = vc.read()
+        frameCount += 1
+        
+        #Resize the frame
+        resizedFrame = cv2.resize(frame,(0,0), fx=0.50, fy=0.50)
+
+        #Get the foreground mask
+        fgmask = fgbg.apply(resizedFrame)
+
+        #Count all the nonzero pixels within the mask
+        count = np.count_nonzero(fgmask)
+
+            
+
+        if(frameCount > 1 and count > 1000):
+            
+            print("Bevegelse")
+        
+       
+        
+
+    
+    
+        
+
+        
     
 thread1 = threading.Thread(target=loop1)
 thread1.start()
 thread2 = threading.Thread(target=loop2)
 thread2.start()
-#thread3 = threading.Thread(target=loop3)
-#thread3.start()
+thread3 = threading.Thread(target=loop3)
+thread3.start()
 
 @app.route('/')
 def index():
@@ -115,7 +145,7 @@ def index():
 def gen():
     """Video streaming generator function"""
     while True:
-        rval, frame = vc.read()
+        ret, frame = vc.read()
         cv2.imwrite('pic.jpg', frame)
         yield(b'--frame\r\n'
                 b'Content-Type: image/jpeg\r\n\r\n' + open('pic.jpg', 'rb').read() + b'\r\n')
@@ -128,6 +158,12 @@ def video_feed():
 if __name__ == '__main__':
     serve(app, host='10.0.0.79', port=5000)
     #app.run(host='10.0.0.79', port=5000,  debug=True, threaded=True)
+
+
+
+    
+
+
 
 
 
