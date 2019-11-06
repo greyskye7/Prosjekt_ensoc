@@ -1,0 +1,58 @@
+import sys
+import time
+import binascii
+from bluepy.btle import UUID, Peripheral
+
+def info():
+        print('--------------------------')
+	print('Angi kommando:')
+	print('--------------------------')
+	print('"r"   : Read Button')
+	print('"L1"  : LED on')
+	print('"L0"  : LED off')
+	print('"i"   : info (this)')
+	print('"q"   : quit')
+        print('--------------------------')
+
+BLEunit = "d4:c4:e0:c2:5d:21"
+print("Trying to connect to: "+ BLEunit)
+print("(If trouble connecting, try restarting the dongle)")
+p = Peripheral(BLEunit,"random")
+chList = p.getCharacteristics()
+serv = p.getServices()
+print "Tilkoblet....\n"
+print "--------------------SERVICER---------------------------"
+#displays all services
+for service in serv:
+        print service
+print "-------------------------------------------------------\n"
+print "-----------------CHARACTERISTICS-----------------------"
+print "Handle   UUID                                Properties"
+print "-------------------------------------------------------"
+#display all characteristics
+for ch in chList:
+   print ("  0x"+ format(ch.getHandle(),'02X')  +"   "+str(ch.uuid) +" " + ch.propertiesToString())
+print "-------------------------------------------------------"
+
+
+info()
+str = raw_input()
+while (str!="q"):
+	if (str=="r"):
+		print("Bryter char value: " + binascii.hexlify(chList[5].read()) +"\n")
+	elif (str=="L1"):
+		chList[6].write(bytearray([0x01]))
+		time.sleep(0.5)
+		print("Turned led on (value written: 0x01), value read: " + binascii.hexlify(chList[6].read()) +"\n")
+       	elif (str=="L0"):
+		chList[6].write(bytearray([0x00]))
+               	time.sleep(0.5)
+               	print("Turned led off (value written: 0x00), value read: " + binascii.hexlify(chList[6].read()) +"\n")
+	elif (str=="i"):
+		info()
+	else:
+		print("Ugyldig kommando... .\n")
+	str = raw_input()
+
+p.disconnect()
+print ("Avslutter")
