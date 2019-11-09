@@ -11,6 +11,7 @@ from flask import Flask, render_template, Response
 import io
 import cv2
 import pyzbar.pyzbar as pyzbar
+from multiprocessing import Process
 
 
 
@@ -22,7 +23,7 @@ fgbg = cv2.createBackgroundSubtractorMOG2(50,200,True)
 
 
 UDP_IP = "0.0.0.0"
-UDP_PORT = 9010
+UDP_PORT = 9060
 sock = socket.socket(socket.AF_INET,    # Internet protocol
                      socket.SOCK_DGRAM) # User Datagram (UDP)
 sock.bind((UDP_IP, UDP_PORT))
@@ -131,61 +132,28 @@ def loop3():
 
 def loop4():
     global frameCount
-    global b
-    if(b == 0):
-        while True:  
-            ret, frame = vc.read()
-            frameCount += 1
+    while True:  
+        ret, frame = vc.read()
+        frameCount += 1
             
-            #Resize the frame
-            resizedFrame = cv2.resize(frame,(0,0), fx=0.50, fy=0.50)
+        #Resize the frame
+        resizedFrame = cv2.resize(frame,(0,0), fx=0.50, fy=0.50)
 
-            #Get the foreground mask
-            fgmask = fgbg.apply(resizedFrame)
+        #Get the foreground mask
+        fgmask = fgbg.apply(resizedFrame)
 
-            #Count all the nonzero pixels within the mask
-            count = np.count_nonzero(fgmask)
+        #Count all the nonzero pixels within the mask
+        count = np.count_nonzero(fgmask)
 
                 
 
-            if(frameCount > 1 and count > 1000):
+        if(frameCount > 1 and count > 100000):
                 
-                print("Bevegelse")
-                b = 1
-                thread5.start()
-                time.sleep(1)
-                break
+            print("Bevegelse")
                 
 
-def loop5():
-    global b
-    if(b == 1):
-        @app.route('/')
-        def index():
-            """Video streaming home page"""
-            return render_template('index.html')
 
-        def gen():
-            """Video streaming generator function"""
-            while True:
-                ret, frame = vc.read()
-                cv2.imwrite('pic.jpg', frame)
-                yield(b'--frame\r\n'
-                        b'Content-Type: image/jpeg\r\n\r\n' + open('pic.jpg', 'rb').read() + b'\r\n')
-                if(b == 0):
-                    time.sleep(1)
-                    break
-                
-        @app.route('/video_feed')
-        def video_feed():
-            return Response(gen(),
-                            mimetype='multipart/x-mixed-replace; boundary=frame')
-
-        if __name__ == '__main__':
-            #serve(app, host='10.0.0.79', port=5000)
-            app.run(host='10.0.0.79', port=5000,  threaded=True)
-   
-        
+          
     
 thread1 = threading.Thread(target=loop1)
 thread1.start()
@@ -195,7 +163,31 @@ thread3 = threading.Thread(target=loop3)
 thread3.start()
 thread4 = threading.Thread(target=loop4)
 thread4.start()
-thread5 = threading.Thread(target=loop5)
+
+@app.route('/')
+def index():
+    """Video streaming home page"""
+    return render_template('index.html')
+
+def gen():
+    """Video streaming generator function"""
+    while True:
+        ret, frame = vc.read()
+        cv2.imwrite('pic.jpg', frame)
+        yield(b'--frame\r\n'
+                b'Content-Type: image/jpeg\r\n\r\n' + open('pic.jpg', 'rb').read() + b'\r\n')
+                
+@app.route('/video_feed')
+def video_feed():
+    return Response(gen(),
+                    mimetype='multipart/x-mixed-replace; boundary=frame')
+
+if __name__ == '__main__':
+    app.run(host='10.0.0.79', port=5000,  threaded=True)
+   
+
+
+
 
 
 
