@@ -31,6 +31,10 @@ sock = socket.socket(socket.AF_INET,    # Internet protocol
                      socket.SOCK_DGRAM) # User Datagram (UDP)
 sock.bind((UDP_IP, UDP_PORT))
 
+UDP_IP1 = "10.0.0.87"
+UDP_PORT1 = 9020
+
+
 
 #Serielt mot mikrokontroller
 portMbed = "/dev/ttyACM0"
@@ -130,31 +134,7 @@ def loop3():
         else:
             SerialIOmbed.write("0\n")
 
-#def loop4():
-    #global frameCount
-    #while True:  
-     #   ret, frame = vc.read()
-      #  frameCount += 1
-            
-        #Resize the frame
-       # resizedFrame = cv2.resize(frame,(0,0), fx=0.50, fy=0.50)
-
-        #Get the foreground mask
-     #   fgmask = fgbg.apply(resizedFrame)
-
-        #Count all the nonzero pixels within the mask
-      #  count = np.count_nonzero(fgmask)
-
-                
-
-       # if(frameCount > 1 and count > 100000):
-           
-            
-        #    print("Bevegelse")
-                
-
-
-          
+       
     
 thread1 = threading.Thread(target=loop1)
 thread1.start()
@@ -162,8 +142,7 @@ thread2 = threading.Thread(target=loop2)
 thread2.start()
 thread3 = threading.Thread(target=loop3)
 thread3.start()
-#thread4 = threading.Thread(target=loop4)
-#thread4.start()
+
 
 @app.route('/')
 def index():
@@ -175,6 +154,7 @@ def gen():
     vc = cv2.VideoCapture(-1) 
     fgbg = cv2.createBackgroundSubtractorMOG2(50,200,True)
     frameCount = 0
+    
     """Video streaming generator function"""
     while True:
         ret, frame = vc.read()
@@ -190,19 +170,24 @@ def gen():
 
         #Count all the nonzero pixels within the mask
         count = np.count_nonzero(fgmask)
-
-                
+        cv2.imwrite('pic.jpg', frame)
+        yield(b'--frame\r\n'
+                b'Content-Type: image/jpeg\r\n\r\n' + open('pic.jpg', 'rb').read() + b'\r\n')
+        
+              
         if(b == 0):
             if(frameCount > 1 and count > 4500): 
                 print("Bevegelse")
                 b = 1
+                sock1 = socket.socket(socket.AF_INET,    # Internet protocol
+                     socket.SOCK_DGRAM) # User Datagram (UDP)
+                sock1.sendto(str(frame[1*46080:2*46080]), (UDP_IP1, UDP_PORT1))
                 
         
 
         
-        cv2.imwrite('pic.jpg', frame)
-        yield(b'--frame\r\n'
-                b'Content-Type: image/jpeg\r\n\r\n' + open('pic.jpg', 'rb').read() + b'\r\n')
+        
+        
 
 thread4 = threading.Thread(target=gen)
 thread4.start()

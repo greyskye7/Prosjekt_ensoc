@@ -10,11 +10,12 @@ import cv2
 import pyzbar.pyzbar as pyzbar
 
 
+
 #app = Flask(__name__)
-vc = cv2.VideoCapture(-1)
+vc = cv2.VideoCapture(1)
 
 UDP_IP = "10.0.0.87"
-UDP_PORT = 9010
+UDP_PORT = 9020
  
 print "UDP target IP:",   UDP_IP
 print "UDP target port:", UDP_PORT
