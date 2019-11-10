@@ -11,22 +11,22 @@ from flask import Flask, render_template, Response
 import io
 import cv2
 import pyzbar.pyzbar as pyzbar
-from multiprocessing import Process
+
 
 
 
 app = Flask(__name__)
-vc = cv2.VideoCapture(-1) #Hadde problemer med index 0,
-                    #index(-1) tar i bruk det første tilgjengelige kameraet
-fgbg = cv2.createBackgroundSubtractorMOG2(50,200,True)
+#vc = cv2.VideoCapture(-1) 
+
 
 
 
 UDP_IP = "0.0.0.0"
-UDP_PORT = 9060
+UDP_PORT = 9010
 sock = socket.socket(socket.AF_INET,    # Internet protocol
                      socket.SOCK_DGRAM) # User Datagram (UDP)
 sock.bind((UDP_IP, UDP_PORT))
+
 
 
 port = "/dev/ttyACM0"
@@ -46,7 +46,7 @@ SerialBLE = serial.Serial(port2, 9600)
 SerialBLE.flushInput()
 SerialBLE.flushOutput()
 
-frameCount = 0
+
 
 a = 0
 b = 0
@@ -130,10 +130,56 @@ def loop3():
         else:
             SerialIOmbed.write("0\n")
 
-def loop4():
-    global frameCount
-    while True:  
+#def loop4():
+    #global frameCount
+    #while True:  
+     #   ret, frame = vc.read()
+      #  frameCount += 1
+            
+        #Resize the frame
+       # resizedFrame = cv2.resize(frame,(0,0), fx=0.50, fy=0.50)
+
+        #Get the foreground mask
+     #   fgmask = fgbg.apply(resizedFrame)
+
+        #Count all the nonzero pixels within the mask
+      #  count = np.count_nonzero(fgmask)
+
+                
+
+       # if(frameCount > 1 and count > 100000):
+           
+            
+        #    print("Bevegelse")
+                
+
+
+          
+    
+thread1 = threading.Thread(target=loop1)
+thread1.start()
+thread2 = threading.Thread(target=loop2)
+thread2.start()
+thread3 = threading.Thread(target=loop3)
+thread3.start()
+#thread4 = threading.Thread(target=loop4)
+#thread4.start()
+
+@app.route('/')
+def index():
+    """Video streaming home page"""
+    return render_template('index.html')
+
+def gen():
+    vc = cv2.VideoCapture(-1) 
+    fgbg = cv2.createBackgroundSubtractorMOG2(50,200,True)
+    frameCount = 0
+    """Video streaming generator function"""
+    while True:
         ret, frame = vc.read()
+
+        if not ret:
+            break
         frameCount += 1
             
         #Resize the frame
@@ -147,35 +193,17 @@ def loop4():
 
                 
 
-        if(frameCount > 1 and count > 100000):
-                
+        if(frameCount > 1 and count > 4500):
+           
+            
             print("Bevegelse")
-                
-
-
-          
-    
-thread1 = threading.Thread(target=loop1)
-thread1.start()
-thread2 = threading.Thread(target=loop2)
-thread2.start()
-thread3 = threading.Thread(target=loop3)
-thread3.start()
-thread4 = threading.Thread(target=loop4)
-thread4.start()
-
-@app.route('/')
-def index():
-    """Video streaming home page"""
-    return render_template('index.html')
-
-def gen():
-    """Video streaming generator function"""
-    while True:
-        ret, frame = vc.read()
+        
         cv2.imwrite('pic.jpg', frame)
         yield(b'--frame\r\n'
                 b'Content-Type: image/jpeg\r\n\r\n' + open('pic.jpg', 'rb').read() + b'\r\n')
+
+thread4 = threading.Thread(target=gen)
+thread4.start()
                 
 @app.route('/video_feed')
 def video_feed():
@@ -183,7 +211,7 @@ def video_feed():
                     mimetype='multipart/x-mixed-replace; boundary=frame')
 
 if __name__ == '__main__':
-    app.run(host='10.0.0.79', port=5000,  threaded=True)
+    app.run(host='10.0.0.87', port=5000,  threaded=True)
    
 
 
