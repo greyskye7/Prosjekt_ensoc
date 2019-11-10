@@ -6,7 +6,6 @@ import smbus
 import sys
 import numpy as np
 import RPi.GPIO as GPIO
-from waitress import serve
 from flask import Flask, render_template, Response
 import io
 import cv2
@@ -14,13 +13,18 @@ import pyzbar.pyzbar as pyzbar
 
 
 
-
+#Flask server
 app = Flask(__name__)
 #vc = cv2.VideoCapture(-1) 
 
+#Nunchuck
+bus = smbus.SMBus(1)
+address = 0x52
+bus.write_byte_data(address, 0x40, 0x00)
+bus.write_byte_data(address, 0xF0, 0x55)
+bus.write_byte_data(address, 0xFB, 0x00)
 
-
-
+#UDP for C#
 UDP_IP = "0.0.0.0"
 UDP_PORT = 9010
 sock = socket.socket(socket.AF_INET,    # Internet protocol
@@ -28,21 +32,15 @@ sock = socket.socket(socket.AF_INET,    # Internet protocol
 sock.bind((UDP_IP, UDP_PORT))
 
 
-
-port = "/dev/ttyACM0"
-port2 = "/dev/ttyACM1"
-bus = smbus.SMBus(1)
-address = 0x52
-bus.write_byte_data(address, 0x40, 0x00)
-bus.write_byte_data(address, 0xF0, 0x55)
-bus.write_byte_data(address, 0xFB, 0x00)
-
-
-
-SerialIOmbed = serial.Serial(port,9600) #setup the serial port and baudrate
+#Serielt mot mikrokontroller
+portMbed = "/dev/ttyACM0"
+SerialIOmbed = serial.Serial(portMbed,9600) #setup the serial port and baudrate
 SerialIOmbed.flushInput()                #Remove old input's
-SerialIOmbed.flushOutput()
-SerialBLE = serial.Serial(port2, 9600)
+SerialIOmbed.flushOutput()               #Remove old output's
+
+#Serielt mot blåtannmodul
+portBLE = "/dev/ttyACM1"
+SerialBLE = serial.Serial(portBLE, 115200)
 SerialBLE.flushInput()
 SerialBLE.flushOutput()
 
@@ -50,6 +48,7 @@ SerialBLE.flushOutput()
 
 a = 0
 b = 0
+
 
 def loop1():
     global a
@@ -63,11 +62,12 @@ def loop1():
             a = 0
             b = 1
         if(int(data) == 01): #Alarm av, styres fra C#
-           a = 1
-           b = 0
+            a = 1
+            b = 0
         if(int(data) == 00): #Alarm av, styres fra Nunchuck
-           a = 0
-           b = 0
+            a = 0
+            b = 0
+        sock.sendto(str(b), (UDP_IP, UDP_PORT))
         if(a == 1):
             print "Verdi:", data
            
@@ -171,6 +171,7 @@ def index():
     return render_template('index.html')
 
 def gen():
+    global b
     vc = cv2.VideoCapture(-1) 
     fgbg = cv2.createBackgroundSubtractorMOG2(50,200,True)
     frameCount = 0
@@ -178,8 +179,7 @@ def gen():
     while True:
         ret, frame = vc.read()
 
-        if not ret:
-            break
+
         frameCount += 1
             
         #Resize the frame
@@ -192,11 +192,13 @@ def gen():
         count = np.count_nonzero(fgmask)
 
                 
+        if(b == 0):
+            if(frameCount > 1 and count > 4500): 
+                print("Bevegelse")
+                b = 1
+                
+        
 
-        if(frameCount > 1 and count > 4500):
-           
-            
-            print("Bevegelse")
         
         cv2.imwrite('pic.jpg', frame)
         yield(b'--frame\r\n'
