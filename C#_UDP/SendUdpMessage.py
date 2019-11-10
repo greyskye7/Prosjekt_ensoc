@@ -31,6 +31,7 @@ if ret:
 sock = socket.socket(socket.AF_INET,     # Internet protocol
                      socket.SOCK_DGRAM)  # User Datagram (UDP)
 
+
 #d = frame.flatten ()
 s = frame.tostring ()
 

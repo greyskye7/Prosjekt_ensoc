@@ -50,8 +50,8 @@ SerialBLE.flushOutput()
 
 
 
-a = 0
-b = 0
+a = 0 #Manuell kontroll
+b = 0 #Alarm status
 
 
 def loop1():
@@ -91,6 +91,7 @@ def loop1():
 
 def loop2():
     global a
+    global b
     while True:     
         bus.write_byte(address, 0x00)
         time.sleep(0.1)
@@ -117,6 +118,11 @@ def loop2():
                 SerialIOmbed.write("4\n")
             else:
                 SerialIOmbed.write("0\n")
+        #Reaktiverer bevegelsesdeteksjon/skrur av
+        #alarm med Nunchuck Z-button
+        if(b == 1):
+            if(Z_button == 0):
+                b = 0
 
 
 def loop3():
