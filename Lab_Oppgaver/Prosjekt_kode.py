@@ -42,6 +42,9 @@ SerialIOmbed = serial.Serial(portMbed,9600) #setup the serial port and baudrate
 SerialIOmbed.flushInput()                #Remove old input's
 SerialIOmbed.flushOutput()               #Remove old output's
 
+status = SerialIOmbed.read()
+print("%s", status)
+
 #Serielt mot blåtannmodul
 portBLE = "/dev/ttyACM1"
 SerialBLE = serial.Serial(portBLE, 115200)
@@ -67,7 +70,7 @@ def loop1():
             b = 1
         if(int(data) == 01): #Alarm av, styres fra C#
             a = 1
-            b = 0
+            b = 0 
         if(int(data) == 00): #Alarm av, styres fra Nunchuck
             a = 0
             b = 0
@@ -126,11 +129,17 @@ def loop2():
 
 
 def loop3():
+    global b
     while True:
-        x = SerialBLE.read()
+        liste = [0,0,0,0] #Liste for å ta imot data fra BLE
+        for i in range(0,3):
+            liste[i] = SerialBLE.read()
+        x = liste[0]
         print x
-        if(x == "L"):
-            SerialIOmbed.write("1\n")
+        if(x == "1"):
+            b = 0 # Skrur av alarm/på med bevegelsesdeteksjon
+        elif(x == "L"):
+            SerialIOmbed.write("1\n") #Kjører motor mot venstre
         elif(x == "R"):
             SerialIOmbed.write("2\n")
         elif(x == "U"):
