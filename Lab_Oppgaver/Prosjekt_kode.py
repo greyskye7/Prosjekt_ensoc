@@ -3,19 +3,21 @@ import time
 import socket
 import serial
 import smbus
-import sys
+#import sys
 import numpy as np
 import RPi.GPIO as GPIO
 from flask import Flask, render_template, Response
 import io
 import cv2
-import pyzbar.pyzbar as pyzbar
+#import pyzbar.pyzbar as pyzbar
 
-
+GPIO.setwarnings(False) 
+GPIO.setmode(GPIO.BCM) 
+GPIO.setup(17, GPIO.OUT)
 
 #Flask server
 app = Flask(__name__)
-#vc = cv2.VideoCapture(-1) 
+ 
 
 #Nunchuck
 bus = smbus.SMBus(1)
@@ -24,13 +26,14 @@ bus.write_byte_data(address, 0x40, 0x00)
 bus.write_byte_data(address, 0xF0, 0x55)
 bus.write_byte_data(address, 0xFB, 0x00)
 
-#UDP for C#
-UDP_IP = "0.0.0.0"
+#UDP for sende fra C#
+UDP_IP = "10.0.0.2"
 UDP_PORT = 9010
 sock = socket.socket(socket.AF_INET,    # Internet protocol
                      socket.SOCK_DGRAM) # User Datagram (UDP)
-sock.bind((UDP_IP, UDP_PORT))
+sock.bind(("10.0.0.87", UDP_PORT))
 
+#UDP for node-red
 UDP_IP1 = "10.0.0.87"
 UDP_PORT1 = 9020
 
@@ -42,8 +45,7 @@ SerialIOmbed = serial.Serial(portMbed,9600) #setup the serial port and baudrate
 SerialIOmbed.flushInput()                #Remove old input's
 SerialIOmbed.flushOutput()               #Remove old output's
 
-status = SerialIOmbed.read()
-print("%s", status)
+
 
 #Serielt mot blåtannmodul
 portBLE = "/dev/ttyACM1"
@@ -53,39 +55,38 @@ SerialBLE.flushOutput()
 
 
 
-a = 0 #Manuell kontroll
-b = 0 #Alarm status
+manually = 0 #Manuell kontroll
+alarm = 0 #Alarm status
 
 
 def loop1():
-    global a
-    global b
+    global manually
+    global alarm
+    
     while True:
         data, addr = sock.recvfrom(1280) # Max recieve size is 1280 bytes
-        if(int(data) == 11): #Alarm på, styres fra C#
-            a = 1
-            b = 1
-        if(int(data) == 10): #Alarm på, styres fra Nunchuck
-            a = 0
-            b = 1
-        if(int(data) == 01): #Alarm av, styres fra C#
-            a = 1
-            b = 0 
-        if(int(data) == 00): #Alarm av, styres fra Nunchuck
-            a = 0
-            b = 0
-        sock.sendto(str(b), (UDP_IP, UDP_PORT))
-        if(a == 1):
-            print "Verdi:", data
-           
+        kontroll = data.split(",")
+       
+        if(kontroll[6] == "1"): #Styres fra C#
+            manually = 1
+        if(kontroll[6] == "0"): #Styres fra Nunchuck
+            manually = 0
+        if(kontroll[5] == "1"): #Alarm På,
+            alarm = 1
+            GPIO.output(17, GPIO.HIGH)
+        if(kontroll[5] == "0"): #Alarm av
+            alarm = 0
+            GPIO.output(17, GPIO.LOW)
             
-            if(int(data) == 100001) or (int(data) == 100011):
+        
+        if(manually == 1):
+            if(kontroll[1] == "1"):
                 SerialIOmbed.write("1\n") #Kjører stepper til venstre
-            elif(int(data) == 10001) or (int(data) == 10011):
+            elif(kontroll[2] == "1"):
                 SerialIOmbed.write("2\n") #Kjører stepper til høyre
-            elif(int(data) == 1001) or (int(data) == 1011):
+            elif(kontroll[3] == "1"):
                 SerialIOmbed.write("3\n") #Kjører stepper til opp
-            elif(int(data) == 101) or (int(data) == 111):
+            elif(kontroll[4] == "1"):
                 SerialIOmbed.write("4\n") #Kjører stepper til ned
             else:
                 SerialIOmbed.write("0\n")
@@ -93,8 +94,8 @@ def loop1():
         
 
 def loop2():
-    global a
-    global b
+    global manually
+    global alarm
     while True:     
         bus.write_byte(address, 0x00)
         time.sleep(0.1)
@@ -109,7 +110,7 @@ def loop2():
         joy_y = data[1]
         Z_button = (data[5] & 0x01)
         
-        if(a == 0):
+        if(manually == 0):
               
             if(joy_x < 134):
                 SerialIOmbed.write("1\n")
@@ -123,31 +124,37 @@ def loop2():
                 SerialIOmbed.write("0\n")
         #Reaktiverer bevegelsesdeteksjon/skrur av
         #alarm med Nunchuck Z-button
-        if(b == 1):
+        if(alarm == 1):
             if(Z_button == 0):
-                b = 0
+                print("Alarm deaktivert")
+                alarm = 0
+                sock.sendto(str(alarm), (UDP_IP, UDP_PORT))
 
 
 def loop3():
-    global b
+    global alarm
     while True:
         liste = [0,0,0,0] #Liste for å ta imot data fra BLE
         for i in range(0,3):
             liste[i] = SerialBLE.read()
-        x = liste[0]
-        print x
-        if(x == "1"):
-            b = 0 # Skrur av alarm/på med bevegelsesdeteksjon
-        elif(x == "L"):
+        blue = liste[0]
+        if(blue == "1"):
+            alarm = 0 # Skrur av alarm/på med bevegelsesdeteksjon
+            print("Alarm deaktivert")
+            sock.sendto(str(alarm), (UDP_IP, UDP_PORT))
+        if(blue == "L"):
             SerialIOmbed.write("1\n") #Kjører motor mot venstre
-        elif(x == "R"):
+        elif(blue == "R"):
             SerialIOmbed.write("2\n")
-        elif(x == "U"):
+        elif(blue == "U"):
             SerialIOmbed.write("3\n")
-        elif(x == "D"):
+        elif(blue == "D"):
             SerialIOmbed.write("4\n")
         else:
             SerialIOmbed.write("0\n")
+
+
+
 
        
     
@@ -159,14 +166,15 @@ thread3 = threading.Thread(target=loop3)
 thread3.start()
 
 
+
 @app.route('/')
 def index():
     """Video streaming home page"""
     return render_template('index.html')
 
 def gen():
-    global b
-    vc = cv2.VideoCapture(-1) 
+    global alarm
+    vc = cv2.VideoCapture(0) 
     fgbg = cv2.createBackgroundSubtractorMOG2(50,200,True)
     frameCount = 0
     
@@ -190,10 +198,12 @@ def gen():
                 b'Content-Type: image/jpeg\r\n\r\n' + open('pic.jpg', 'rb').read() + b'\r\n')
         
               
-        if(b == 0):
+        if(alarm == 0):
             if(frameCount > 1 and count > 4500): 
-                print("Bevegelse")
-                b = 1
+                print("ALARM!!!!")
+                alarm = 1
+                sock.sendto(str(alarm), (UDP_IP, UDP_PORT))
+                time.sleep(0.1)
                 sock1 = socket.socket(socket.AF_INET,    # Internet protocol
                      socket.SOCK_DGRAM) # User Datagram (UDP)
                 sock1.sendto(str(frame[1*46080:2*46080]), (UDP_IP1, UDP_PORT1))
