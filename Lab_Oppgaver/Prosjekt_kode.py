@@ -59,7 +59,7 @@ manually = 0 #Variabel for motorstyring fra Nunchuck eller C#
 alarm = 0 #Variabel for alarm status
 
 
-def Csharp():
+def Csharp(): # Tråd for data som sendes til og fra C#
     global manually #Ved å gjøre variabelene globale kan funksjonene dele på de samme variabelene. Når en variabel verdi endres så gjør den det alle steder den er inkludert
     global alarm
     
@@ -81,19 +81,19 @@ def Csharp():
         
         if(manually == 1): # Betingelse for å kjøre stepper motorene fra C#
             if(kontroll[1] == "1"): # 2 element i array'en i dataen mottatt fra C#.
-                SerialIOmbed.write("1\n") #Kjører stepper til venstre
+                SerialIOmbed.write("1\n") #Kjører stepper1 til venstre
             elif(kontroll[2] == "1"):
-                SerialIOmbed.write("2\n") #Kjører stepper til høyre
+                SerialIOmbed.write("2\n") #Kjører stepper1 til høyre
             elif(kontroll[3] == "1"):
-                SerialIOmbed.write("3\n") #Kjører stepper til opp
+                SerialIOmbed.write("3\n") #Kjører stepper2 oppver
             elif(kontroll[4] == "1"):
-                SerialIOmbed.write("4\n") #Kjører stepper til ned
+                SerialIOmbed.write("4\n") #Kjører stepper2 nedover
             else:
                 SerialIOmbed.write("0\n") #Stepper motorene står i ro
             
         
 
-def I2C():
+def I2C(): # Tråd for data for Nunchuck
     global manually
     global alarm
     while True:     
@@ -110,28 +110,31 @@ def I2C():
         joy_y = data[1]
         Z_button = (data[5] & 0x01)
         
-        if(manually == 0):
+        if(manually == 0): # Betingelse for å kjøre stepper motorene fra Nunchuck
               
-            if(joy_x < 134):
-                SerialIOmbed.write("1\n")
+            if(joy_x < 134): # Midtverdi for nunchuck i x-akse er 139
+                SerialIOmbed.write("1\n") #Er verdien på nunchuck mindre enn 134 i x-akse så kjører stepper1 til venstre
             elif(joy_x > 144):
-                SerialIOmbed.write("2\n")
+                SerialIOmbed.write("2\n") #Kjører stepper1 til høyre
             elif(joy_y < 134):
-                SerialIOmbed.write("3\n")
+                SerialIOmbed.write("3\n") #Kjører stepper2 oppover
             elif(joy_y > 144):
-                SerialIOmbed.write("4\n")
+                SerialIOmbed.write("4\n") #Kjører stepper2 nedover
             else:
-                SerialIOmbed.write("0\n")
+                SerialIOmbed.write("0\n") # Stepper motorene står i ro
+                
         #Reaktiverer bevegelsesdeteksjon/skrur av
         #alarm med Nunchuck Z-button
-        if(alarm == 1):
-            if(Z_button == 0):
+        if(alarm == 1): # Hvis alarmen er aktivert
+            if(Z_button == 0): # Da kan man med Z knapp på Nunchuck deaktivere alarmen
                 print("Alarm deaktivert")
-                alarm = 0
+                alarm = 0 #Når alarmen er deaktivert blir denne verdien
+                # sendt til C# slik at kontrollpanelet der også blir oppdatert.
+                # Denne verdien blir sendt som en UDP melding
                 sock.sendto(str(alarm), (UDP_IP, UDP_PORT))
 
 
-def BLE():
+def BLE(): # Tråd for data som mottas fra blåtann enheten
     global alarm
     while True:
         liste = [0,0,0,0] #Liste for å ta imot data fra BLE
