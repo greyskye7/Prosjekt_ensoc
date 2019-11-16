@@ -26,6 +26,7 @@ bus.write_byte_data(address, 0x40, 0x00) # Bruker I2C adressen til å sende komm
 bus.write_byte_data(address, 0xF0, 0x55) # Bruker I2C adressen til å sende kommandoen 0xF0 med dataen 0x55
 bus.write_byte_data(address, 0xFB, 0x00) # Bruker I2C adressen til å sende kommandoen 0xFB med dataen 0x00
 # FINNE UT HVA KOMMANDOENE I write_byte_data gjør!!!!!
+
 #UDP for sende fra C#
 UDP_IP = "10.0.0.2"
 UDP_PORT = 9010
@@ -59,7 +60,7 @@ manually = 0 #Variabel for motorstyring fra Nunchuck eller C#
 alarm = 0 #Variabel for alarm status
 
 
-def Csharp(): # Tråd for data som sendes til og fra C#
+def Csharp(): # Funksjon for data som sendes til og fra C#
     global manually #Ved å gjøre variabelene globale kan funksjonene dele på de samme variabelene. Når en variabel verdi endres så gjør den det alle steder den er inkludert
     global alarm
     
@@ -93,7 +94,7 @@ def Csharp(): # Tråd for data som sendes til og fra C#
             
         
 
-def I2C(): # Tråd for data for Nunchuck
+def I2C(): # Funksjon for Nunchuck/I2C
     global manually
     global alarm
     while True:     
@@ -134,38 +135,39 @@ def I2C(): # Tråd for data for Nunchuck
                 sock.sendto(str(alarm), (UDP_IP, UDP_PORT))
 
 
-def BLE(): # Tråd for data som mottas fra blåtann enheten
+def BLE(): # Funksjon for blåtann-enheten
     global alarm
     while True:
         liste = [0,0,0,0] #Liste for å ta imot data fra BLE
-        for i in range(0,3):
-            liste[i] = SerialBLE.read()
-        blue = liste[0]
+        for i in range(0,3): # En for løkke med fire iterasjoner 
+            liste[i] = SerialBLE.read() #Leser data fra blåtann enheten. Dataen blir sendt over seriellporten og lagres en en array.
+        blue = liste[0] # Man er kun intressert i det første elementet i array'en
         if(blue == "1"):
-            alarm = 0 # Skrur av alarm/på med bevegelsesdeteksjon
+            alarm = 0 # Skrur av alarm
             print("Alarm deaktivert")
+            # Når alarmen blir deaktivert, brukes den globale variabelen alarm til å oppdatere alarm status i C#, hvor denne dataen blir sendt som en UDP melding.
             sock.sendto(str(alarm), (UDP_IP, UDP_PORT))
         if(blue == "L"):
-            SerialIOmbed.write("1\n") #Kjører motor mot venstre
+            SerialIOmbed.write("1\n") #Kjører motor1 mot venstre
         elif(blue == "R"):
-            SerialIOmbed.write("2\n")
+            SerialIOmbed.write("2\n") #Kjører motor1 mot høyre
         elif(blue == "U"):
-            SerialIOmbed.write("3\n")
+            SerialIOmbed.write("3\n") #Kjører motor2 oppover
         elif(blue == "D"):
-            SerialIOmbed.write("4\n")
+            SerialIOmbed.write("4\n") #Kjører motor2 nedover
         else:
-            SerialIOmbed.write("0\n")
+            SerialIOmbed.write("0\n") # Begge stepper motorene står i ro
 
 
 
 
        
     
-thread1 = threading.Thread(target=Csharp)
-thread1.start()
-thread2 = threading.Thread(target=I2C)
+thread1 = threading.Thread(target=Csharp) # Opprettes en tråd som skal utføre det funksjonen Csharp inneholder
+thread1.start() # Starter tråd 1
+thread2 = threading.Thread(target=I2C) # Opprettes en tråd som skal utføre det funksjonen I2C inneholder
 thread2.start()
-thread3 = threading.Thread(target=BLE)
+thread3 = threading.Thread(target=BLE) # Opprettes en tråd som skal utføre det funksjonen BLE inneholder
 thread3.start()
 
 
@@ -177,39 +179,41 @@ def index():
 
 def gen():
     global alarm
-    vc = cv2.VideoCapture(0) 
-    fgbg = cv2.createBackgroundSubtractorMOG2(50,200,True)
-    frameCount = 0
+    vc = cv2.VideoCapture(0) # Oppretter en variabel for 'fange' bilde
+    fgbg = cv2.createBackgroundSubtractorMOG2(50,200,True) #???
+    frameCount = 0 # Oppretter en teller for å holde kontroll på antall bilder
     
     """Video streaming generator function"""
     while True:
-        ret, frame = vc.read()
+        ret, frame = vc.read() # Variabel for å lese video feeden som kommer over serieporten fra USB kameraet
 
 
-        frameCount += 1
+        frameCount += 1 # Teller øker med en
             
         #Resize the frame
-        resizedFrame = cv2.resize(frame,(0,0), fx=0.50, fy=0.50)
+        #resizedFrame = cv2.resize(frame,(0,0), fx=0.50, fy=0.50)
 
         #Get the foreground mask
-        fgmask = fgbg.apply(resizedFrame)
+        fgmask = fgbg.apply(frame) #???
 
         #Count all the nonzero pixels within the mask
-        count = np.count_nonzero(fgmask)
-        cv2.imwrite('pic.jpg', frame)
-        yield(b'--frame\r\n'
+        count = np.count_nonzero(fgmask) # Det stillestående i bildet vises som sorte piksler og bevegelse i bildet vises som hvite piksler
+        cv2.imwrite('pic.jpg', frame) # Skriver dataen i bildet 'frame' til en jpg fil
+        yield(b'--frame\r\n' # ???
                 b'Content-Type: image/jpeg\r\n\r\n' + open('pic.jpg', 'rb').read() + b'\r\n')
         
               
-        if(alarm == 0):
-            if(frameCount > 1 and count > 4500): 
+        if(alarm == 0): # Alarmen er i bevegelsesdeteksjonsmodus
+            if(frameCount > 1 and count > 4500): # Betingelse for å utløse alarm
                 print("ALARM!!!!")
-                alarm = 1
-                sock.sendto(str(alarm), (UDP_IP, UDP_PORT))
+                alarm = 1 
+                sock.sendto(str(alarm), (UDP_IP, UDP_PORT)) # Hvis alarmen utløses så oppdateres alarmstatus verdien i C#, denne som som en UDP melding
                 time.sleep(0.1)
                 sock1 = socket.socket(socket.AF_INET,    # Internet protocol
                      socket.SOCK_DGRAM) # User Datagram (UDP)
-                sock1.sendto(str(frame[1*46080:2*46080]), (UDP_IP1, UDP_PORT1))
+                sock1.sendto(str(frame[1*46080:2*46080]), (UDP_IP1, UDP_PORT1)) # Hvis alarmen utløses, vil det sendes et bilde til
+                # en email via node-red. Bildet som sendes til mail, hentes fra samme mappe som python scriptet ligger i.
+    
                 
         
 
@@ -217,15 +221,15 @@ def gen():
         
         
 
-thread4 = threading.Thread(target=gen)
+thread4 = threading.Thread(target=gen) # Opprettes en tråd som skal utføre det funksjonen gen inneholder
 thread4.start()
                 
-@app.route('/video_feed')
+@app.route('/video_feed') #???
 def video_feed():
-    return Response(gen(),
+    return Response(gen(), #???
                     mimetype='multipart/x-mixed-replace; boundary=frame')
 
-if __name__ == '__main__':
+if __name__ == '__main__': #???
     app.run(host='10.0.0.87', port=5000,  threaded=True)
    
 
