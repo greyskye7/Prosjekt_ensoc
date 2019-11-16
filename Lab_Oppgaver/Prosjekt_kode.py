@@ -20,12 +20,12 @@ app = Flask(__name__)
  
 
 #Nunchuck
-bus = smbus.SMBus(1)
-address = 0x52
-bus.write_byte_data(address, 0x40, 0x00)
-bus.write_byte_data(address, 0xF0, 0x55)
-bus.write_byte_data(address, 0xFB, 0x00)
-
+bus = smbus.SMBus(1) # Oppretter et I2C program grensesnitt med I2C enheten /dev/i2c-1
+address = 0x52 # Adressen til slave enheten
+bus.write_byte_data(address, 0x40, 0x00) # Bruker I2C adressen til å sende kommandoen 0x40 med dataen 0x00
+bus.write_byte_data(address, 0xF0, 0x55) # Bruker I2C adressen til å sende kommandoen 0xF0 med dataen 0x55
+bus.write_byte_data(address, 0xFB, 0x00) # Bruker I2C adressen til å sende kommandoen 0xFB med dataen 0x00
+# FINNE UT HVA KOMMANDOENE I write_byte_data gjør!!!!!
 #UDP for sende fra C#
 UDP_IP = "10.0.0.2"
 UDP_PORT = 9010
@@ -40,47 +40,47 @@ UDP_PORT1 = 9020
 
 
 #Serielt mot mikrokontroller
-portMbed = "/dev/ttyACM0"
-SerialIOmbed = serial.Serial(portMbed,9600) #setup the serial port and baudrate
-SerialIOmbed.flushInput()                #Remove old input's
-SerialIOmbed.flushOutput()               #Remove old output's
+portMbed = "/dev/ttyACM0" #Deklarerer en variabel for en serieport
+SerialIOmbed = serial.Serial(portMbed,9600) #Setter opp et serieport objekt med definert overføringshastighet 
+SerialIOmbed.flushInput()  #Når koden kjøres utføres første gang, fjernes gammel input fra bufferet til serieporten
+SerialIOmbed.flushOutput()  #Når koden kjøres utføres første gang, fjernes gammel output fra bufferet til serieporten             
 
 
 
 #Serielt mot blåtannmodul
-portBLE = "/dev/ttyACM1"
-SerialBLE = serial.Serial(portBLE, 115200)
-SerialBLE.flushInput()
-SerialBLE.flushOutput()
+portBLE = "/dev/ttyACM1" #Deklarerer en variabel for en serieport
+SerialBLE = serial.Serial(portBLE, 115200) #Setter opp et serieport objekt med definert overføringshastighet
+SerialBLE.flushInput() #Når koden kjøres utføres første gang, fjernes gammel input fra bufferet til serieporten
+SerialBLE.flushOutput() #Når koden kjøres utføres første gang, fjernes gammel output fra bufferet til serieporten
 
 
 
-manually = 0 #Manuell kontroll
-alarm = 0 #Alarm status
+manually = 0 #Variabel for motorstyring fra Nunchuck eller C#
+alarm = 0 #Variabel for alarm status
 
 
-def loop1():
-    global manually
+def Csharp():
+    global manually #Ved å gjøre variabelene globale kan funksjonene dele på de samme variabelene. Når en variabel verdi endres så gjør den det alle steder den er inkludert
     global alarm
     
     while True:
-        data, addr = sock.recvfrom(1280) # Max recieve size is 1280 bytes
-        kontroll = data.split(",")
+        data, addr = sock.recvfrom(1280) #Data overføres fra C# via UDP melding. Maks størrelse på dataen som overføres er 1280 bytes.
+        kontroll = data.split(",")#Dataen fra C# sendes som en lang string. Her splittes dataen opp i en array hvor elementene er delt for hver komma. Dette kalles Comma separated values(CSV).
        
-        if(kontroll[6] == "1"): #Styres fra C#
-            manually = 1
-        if(kontroll[6] == "0"): #Styres fra Nunchuck
-            manually = 0
-        if(kontroll[5] == "1"): #Alarm På,
-            alarm = 1
-            GPIO.output(17, GPIO.HIGH)
-        if(kontroll[5] == "0"): #Alarm av
-            alarm = 0
-            GPIO.output(17, GPIO.LOW)
+        if(kontroll[6] == "1"): # 7 element i array'en i dataen mottatt fra C#.  
+            manually = 1 # Settes kontroll[6] høy så er stepper motorene styrt fra C#
+        if(kontroll[6] == "0"): 
+            manually = 0 # Settes kontroll[6] lav så er stepper motorene styrt med Nunchuck/I2C
+        if(kontroll[5] == "1"): # 6 element i array'en i dataen mottatt fra C#. 
+            alarm = 1 # Settes kontroll[5] høy så utløses alarmen
+            GPIO.output(17, GPIO.HIGH) # GPIO 17, som er satt som en utgang aktiverer en lysdiode som indikerer at alarmen har gått
+        if(kontroll[5] == "0"): 
+            alarm = 0 # Settes kontroll[5] lav så er alarmen deaktivert
+            GPIO.output(17, GPIO.LOW) # GPIO 17 er lav og indikerer at alarmen er av
             
         
-        if(manually == 1):
-            if(kontroll[1] == "1"):
+        if(manually == 1): # Betingelse for å kjøre stepper motorene fra C#
+            if(kontroll[1] == "1"): # 2 element i array'en i dataen mottatt fra C#.
                 SerialIOmbed.write("1\n") #Kjører stepper til venstre
             elif(kontroll[2] == "1"):
                 SerialIOmbed.write("2\n") #Kjører stepper til høyre
@@ -89,15 +89,15 @@ def loop1():
             elif(kontroll[4] == "1"):
                 SerialIOmbed.write("4\n") #Kjører stepper til ned
             else:
-                SerialIOmbed.write("0\n")
+                SerialIOmbed.write("0\n") #Stepper motorene står i ro
             
         
 
-def loop2():
+def I2C():
     global manually
     global alarm
     while True:     
-        bus.write_byte(address, 0x00)
+        bus.write_byte(address, 0x00) # Disse byte'ene sendes til bus konfigurasjonen for å starte en ny avlesning av Nunchucken
         time.sleep(0.1)
         data0 = bus.read_byte(address)
         data1 = bus.read_byte(address)
@@ -131,7 +131,7 @@ def loop2():
                 sock.sendto(str(alarm), (UDP_IP, UDP_PORT))
 
 
-def loop3():
+def BLE():
     global alarm
     while True:
         liste = [0,0,0,0] #Liste for å ta imot data fra BLE
@@ -158,11 +158,11 @@ def loop3():
 
        
     
-thread1 = threading.Thread(target=loop1)
+thread1 = threading.Thread(target=Csharp)
 thread1.start()
-thread2 = threading.Thread(target=loop2)
+thread2 = threading.Thread(target=I2C)
 thread2.start()
-thread3 = threading.Thread(target=loop3)
+thread3 = threading.Thread(target=BLE)
 thread3.start()
 
 
