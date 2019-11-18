@@ -1,18 +1,20 @@
 import threading
-import time
+import time # Sleep funksjonen tilgjengelig
 import socket
 import serial
-import smbus
-#import sys
-import numpy as np
+import smbus # Bibliotek for bruk av I2C i Python
+import numpy as np # Bibliotek for numpy matriser
 import RPi.GPIO as GPIO
 from flask import Flask, render_template, Response
 import io
 import cv2
-#import pyzbar.pyzbar as pyzbar
 
-GPIO.setwarnings(False) 
-GPIO.setmode(GPIO.BCM) 
+
+#For å fjerne advarsler i begynnelsen av programmet
+GPIO.setwarnings(False)
+#Setter pin-assignment
+GPIO.setmode(GPIO.BCM)
+#Definerer GPIO 17 som en utgang
 GPIO.setup(17, GPIO.OUT)
 
 #Flask server
@@ -22,21 +24,28 @@ app = Flask(__name__)
 #Nunchuck
 bus = smbus.SMBus(1) # Oppretter et I2C program grensesnitt med I2C enheten /dev/i2c-1
 address = 0x52 # Adressen til slave enheten
-bus.write_byte_data(address, 0x40, 0x00) # Bruker I2C adressen til å sende kommandoen 0x40 med dataen 0x00
-bus.write_byte_data(address, 0xF0, 0x55) # Bruker I2C adressen til å sende kommandoen 0xF0 med dataen 0x55
-bus.write_byte_data(address, 0xFB, 0x00) # Bruker I2C adressen til å sende kommandoen 0xFB med dataen 0x00
-# FINNE UT HVA KOMMANDOENE I write_byte_data gjør!!!!!
+bus.write_byte_data(address, 0x40, 0x00) 
+bus.write_byte_data(address, 0xF0, 0x55) 
+bus.write_byte_data(address, 0xFB, 0x00) 
 
-#UDP for sende fra C#
+
+#UDP for sende og motta data fra C#
+# IP-adressen som skal motta udp data i C# 
 UDP_IP = "10.0.0.2"
-UDP_PORT = 9010
-sock = socket.socket(socket.AF_INET,    # Internet protocol
-                     socket.SOCK_DGRAM) # User Datagram (UDP)
+# UDP porten som sender og mottar udp data i C#
+UDP_PORT = 9050
+# Oppretter en socket som gjør det mulig å sende udp pakker
+sock = socket.socket(socket.AF_INET,    
+                     socket.SOCK_DGRAM)
+# IP-adressen til pi'en. Denne skal motta udp data fra C#
 sock.bind(("10.0.0.87", UDP_PORT))
 
 #UDP for node-red
+# IP-adressen til pi'en. Denne den skal sende
+#udp data til mail via node-red
 UDP_IP1 = "10.0.0.87"
-UDP_PORT1 = 9020
+# UDP porten som sender udp data til node-red
+UDP_PORT1 = 9051
 
 
 
@@ -100,16 +109,16 @@ def I2C(): # Funksjon for Nunchuck/I2C
     while True:     
         bus.write_byte(address, 0x00) # Disse byte'ene sendes til bus konfigurasjonen for å starte en ny avlesning av Nunchucken
         time.sleep(0.1)
-        data0 = bus.read_byte(address)
+        data0 = bus.read_byte(address) # data0 = adresse 0x00 på busen
         data1 = bus.read_byte(address)
         data2 = bus.read_byte(address)
         data3 = bus.read_byte(address)
         data4 = bus.read_byte(address)
         data5 = bus.read_byte(address)
         data = [data0, data1, data2, data3, data4, data5]
-        joy_x = data[0]
-        joy_y = data[1]
-        Z_button = (data[5] & 0x01)
+        joy_x = data[0] #data0 er på 1 byte
+        joy_y = data[1] #data1 er på 1 byte
+        Z_button = (data[5] & 0x01) # Benyttet 1 bit av data5
         
         if(manually == 0): # Betingelse for å kjøre stepper motorene fra Nunchuck
               
@@ -185,13 +194,12 @@ def gen():
     
     """Video streaming generator function"""
     while True:
-        ret, frame = vc.read() # Variabel for å lese video feeden som kommer over serieporten fra USB kameraet
+        # Variabel for å lese video feeden som kommer over
+        #serieporten fra USB kameraet
+        ret, frame = vc.read() 
 
 
         frameCount += 1 # Teller øker med en
-            
-        #Resize the frame
-        #resizedFrame = cv2.resize(frame,(0,0), fx=0.50, fy=0.50)
 
         #Get the foreground mask
         fgmask = fgbg.apply(frame) #???
@@ -206,13 +214,23 @@ def gen():
         if(alarm == 0): # Alarmen er i bevegelsesdeteksjonsmodus
             if(frameCount > 1 and count > 4500): # Betingelse for å utløse alarm
                 print("ALARM!!!!")
-                alarm = 1 
-                sock.sendto(str(alarm), (UDP_IP, UDP_PORT)) # Hvis alarmen utløses så oppdateres alarmstatus verdien i C#, denne som som en UDP melding
+                alarm = 1
+
+                # Hvis alarmen utløses så oppdateres alarmstatus
+                #verdien i C#, denne verdien sendes som udp-melding
+                sock.sendto(str(alarm), (UDP_IP, UDP_PORT))
+                
                 time.sleep(0.1)
+
+                # Oppretter en socket som gjør det mulig å sende udp pakker
                 sock1 = socket.socket(socket.AF_INET,    # Internet protocol
                      socket.SOCK_DGRAM) # User Datagram (UDP)
-                sock1.sendto(str(frame[1*46080:2*46080]), (UDP_IP1, UDP_PORT1)) # Hvis alarmen utløses, vil det sendes et bilde til
-                # en email via node-red. Bildet som sendes til mail, hentes fra samme mappe som python scriptet ligger i.
+
+                # Hvis alarmen utløses, vil det sendes et bilde til
+                # en email via node-red. Bildet som sendes til mail,
+                # hentes fra samme mappe som python scriptet ligger.
+                sock1.sendto(str(frame[1*46080:2*46080]), (UDP_IP1, UDP_PORT1)) 
+               
     
                 
         
@@ -220,8 +238,8 @@ def gen():
         
         
         
-
-thread4 = threading.Thread(target=gen) # Opprettes en tråd som skal utføre det funksjonen gen inneholder
+# Opprettes en tråd som skal utføre det funksjonen gen() inneholder
+thread4 = threading.Thread(target=gen) 
 thread4.start()
                 
 @app.route('/video_feed') #???
