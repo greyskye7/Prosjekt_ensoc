@@ -109,12 +109,12 @@ def I2C(): # Funksjon for Nunchuck/I2C
     while True:     
         bus.write_byte(address, 0x00) # Disse byte'ene sendes til bus konfigurasjonen for å starte en ny avlesning av Nunchucken
         time.sleep(0.1)
-        data0 = bus.read_byte(address) # data0 = adresse 0x00 på busen
-        data1 = bus.read_byte(address)
-        data2 = bus.read_byte(address)
-        data3 = bus.read_byte(address)
-        data4 = bus.read_byte(address)
-        data5 = bus.read_byte(address)
+        data0 = bus.read_byte(address) # data0 = adressen til joystick x
+        data1 = bus.read_byte(address) # data1 = adressen til joystick y
+        data2 = bus.read_byte(address) # data2 = adressen til accX, ubenyttet
+        data3 = bus.read_byte(address) # data3 = adressen til accY, ubenyttet
+        data4 = bus.read_byte(address) # data4 = adressen til accZ, ubenyttet
+        data5 = bus.read_byte(address) # data5 = Noen av bitene er til acc og 2 bit satt av til trykknappene
         data = [data0, data1, data2, data3, data4, data5]
         joy_x = data[0] #data0 er på 1 byte
         joy_y = data[1] #data1 er på 1 byte

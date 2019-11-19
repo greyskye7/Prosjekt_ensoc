@@ -16,7 +16,7 @@ import threading
 ##                     socket.SOCK_DGRAM) # User Datagram (UDP)
 ##sock.bind((UDP_IP, UDP_PORT))
 ##time.sleep(0.1)
-
+z
 
 
 portbt = "/dev/ttyACM1"
