@@ -1,13 +1,18 @@
-import threading
+import threading # Bibliotek for å utføre tråding
 import time # Sleep funksjonen tilgjengelig
-import socket
-import serial
+import socket # Bibliotek for UDP/TCP_IP
+import serial # Bibliotek for seriell kommunikasjon
 import smbus # Bibliotek for bruk av I2C i Python
 import numpy as np # Bibliotek for numpy matriser
-import RPi.GPIO as GPIO
+import RPi.GPIO as GPIO # Klargjør Pi'en sine GPIO pinner
+
+# Bibliotek for flask funksjoner
 from flask import Flask, render_template, Response
 import io
-import cv2
+
+# Bibliotek for video generering
+# og bilde deteksjon
+import cv2 
 
 
 #For å fjerne advarsler i begynnelsen av programmet
@@ -17,15 +22,21 @@ GPIO.setmode(GPIO.BCM)
 #Definerer GPIO 17 som en utgang
 GPIO.setup(17, GPIO.OUT)
 
-#Flask server
+#Flask server, hvor man setter navn
+# på modulen. Dette har en sammenheng
+# siste kodelinjer i scriptet
 app = Flask(__name__)
  
 
-#Nunchuck
-bus = smbus.SMBus(1) # Oppretter et I2C program grensesnitt med I2C enheten /dev/i2c-1
-address = 0x52 # Adressen til slave enheten
-bus.write_byte_data(address, 0x40, 0x00) 
-bus.write_byte_data(address, 0xF0, 0x55) 
+# Oppretter et I2C program grensesnitt med I2C enheten /dev/i2c-1
+bus = smbus.SMBus(1)
+# Adressen til slave enheten
+address = 0x52 
+# Skriver kommandoer/oppstartsmeldinger til I2C busen
+bus.write_byte_data(address, 0x40, 0x00)
+# Skriver kommandoer/oppstartsmeldinger til I2C busen
+bus.write_byte_data(address, 0xF0, 0x55)
+# Skriver kommandoer/oppstartsmeldinger til I2C busen
 bus.write_byte_data(address, 0xFB, 0x00) 
 
 
@@ -189,8 +200,13 @@ def index():
 def gen():
     global alarm
     vc = cv2.VideoCapture(0) # Oppretter en variabel for 'fange' bilde
-    fgbg = cv2.createBackgroundSubtractorMOG2(50,200,True) #???
-    frameCount = 0 # Oppretter en teller for å holde kontroll på antall bilder
+
+    # Objekt som sammenlikner en frame med neste og ser på forskjellen
+    #Parameterene som kan endres på er History, Threshold, detect Shadows
+    fgbg = cv2.createBackgroundSubtractorMOG2(50,200,True)
+
+    # Oppretter en teller for å holde kontroll på antall frames
+    frameCount = 0 
     
     """Video streaming generator function"""
     while True:
@@ -199,15 +215,27 @@ def gen():
         ret, frame = vc.read() 
 
 
-        frameCount += 1 # Teller øker med en
+        frameCount += 1 # 'Frames' teller øker med en
 
-        #Get the foreground mask
-        fgmask = fgbg.apply(frame) #???
+        # Danner et maske som gir sorte og hvite piklser
+        # kalt en foreground mask
+        fgmask = fgbg.apply(frame) 
 
-        #Count all the nonzero pixels within the mask
-        count = np.count_nonzero(fgmask) # Det stillestående i bildet vises som sorte piksler og bevegelse i bildet vises som hvite piksler
-        cv2.imwrite('pic.jpg', frame) # Skriver dataen i bildet 'frame' til en jpg fil
-        yield(b'--frame\r\n' # ???
+        # Det stillestående i bildet vises som sorte piksler
+        # og bevegelse i bildet vises som hvite piksler
+        count = np.count_nonzero(fgmask)
+
+        # Skriver dataen i bildet 'frame' til en jpg fil
+        # jpg filen legges i samme mappe som python scriptet
+        cv2.imwrite('pic.jpg', frame)
+
+        # yield er en form for return. Yield
+        # har mulighet til å produsere en sekvens
+        # av verdier, i dette tilfellet frames.
+        # Yield brukes når man vil kjøre sekvensen
+        # over mange frames men ikke lagre
+        # hele sekvensen i minnet. 
+        yield(b'--frame\r\n' 
                 b'Content-Type: image/jpeg\r\n\r\n' + open('pic.jpg', 'rb').read() + b'\r\n')
         
               
@@ -241,13 +269,25 @@ def gen():
 # Opprettes en tråd som skal utføre det funksjonen gen() inneholder
 thread4 = threading.Thread(target=gen) 
 thread4.start()
-                
-@app.route('/video_feed') #???
+
+# Forteller hvilken URL som skal sette igang
+# funksjonen video_feed
+@app.route('/video_feed')
+
+# Funksjonen returnerer resultatet fra gen()
+# funksjonen og streamer det på URL'en
+# som er definert for app-objektet
 def video_feed():
-    return Response(gen(), #???
+    return Response(gen(), 
                     mimetype='multipart/x-mixed-replace; boundary=frame')
 
-if __name__ == '__main__': #???
+# Importerer Flask modulen og
+# streamer innholdet av app til
+# definert IP-adresse og port.
+# Ettersom hele python koden gjør
+# mye annet også, ønskes det
+# å utføre med tråding
+if __name__ == '__main__': 
     app.run(host='10.0.0.87', port=5000,  threaded=True)
    
 
