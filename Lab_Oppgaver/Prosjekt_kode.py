@@ -8,8 +8,8 @@ import RPi.GPIO as GPIO # Klargjør Pi'en sine GPIO pinner
 
 # Bibliotek for flask funksjoner
 from flask import Flask, render_template, Response
-import io
 
+import io
 # Bibliotek for video generering
 # og bilde deteksjon
 import cv2 
