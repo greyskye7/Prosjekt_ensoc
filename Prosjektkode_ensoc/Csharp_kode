@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -23,20 +22,26 @@ namespace MySecondProgram1
 
         //Variabel for å motta UDP meldinger
         public string strRecievedUDPMessage;
+        
         public void DoReciveUDP()
         {
             //UDP porten for å motta data fra Pi'en
             UdpClient sock = new UdpClient(9050);
+            
             //Oppretter et IP-objekt for å motta data over UDP
             IPEndPoint iep = new IPEndPoint(IPAddress.Any, 0);
+            
             while (true)
             {
                 try
-                { //Ta imot data som UDP i en matrise
+                { 
+                   //Ta imot data som UDP i en matrise
                     byte[] data = sock.Receive(ref iep);
+                   
                     //Konvertere dataen til en ASCII string
                     strRecievedUDPMessage =
                     Encoding.ASCII.GetString(data, 0, data.Length);
+                   
                     //Kaller på funksjonen UdpDataRecieved
                     this.Invoke(new EventHandler(this.UdpDataRecieved));
                 }
@@ -48,6 +53,7 @@ namespace MySecondProgram1
         public void UdpDataRecieved(object sender, EventArgs e)
         { 
             alarm = strRecievedUDPMessage;
+            
             /*Betingelse for å oppdatere alarmstatus. Utløses
             alarmen vil verdien sendes til C#
             som vil oppdatere statusen i kontrollpanelet*/
@@ -59,18 +65,22 @@ namespace MySecondProgram1
             {
                 Status_alarm.Checked = false;                
             }
-        }       
+        }
+        
         //Funksjon som genererer meldinger som sendes som UDP
         private void checkBoxChanged()
         {
             textBox1.Text = "Kontroll";
-            {   /*Checkboxene blir aktivert ved knappetrykk.
+            {
+                
+	     /*Checkboxene blir aktivert ved knappetrykk.
                  Dette er for å sette betingelser for motorstyring,
                  alarmstatus og hvordan motorene skal styres. 
                  Alle verdiene blir en lang string som er skilt
                  med komma mellom hver verdi. Denne stringen
                  blir i python gjort om til Comma
                  separated values(CSV)*/
+             
                 if (Left.Checked == true)
                 {
                     textBox1.Text += ",1";
@@ -114,6 +124,7 @@ namespace MySecondProgram1
             }
                 //Matrise for å lagre dataen som skal sendes som UDP
                 byte[] data = new byte[1024];
+            
                 /*IP objekt som definerer IP adressen og porten
                  som UDP dataen skal sendes til */
                 IPEndPoint ipep =
