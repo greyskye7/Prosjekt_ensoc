@@ -175,6 +175,8 @@ def BLE(): # Funksjon for blåtann-enheten
             SerialIOmbed.write("3\n") #Kjører motor2 oppover
         elif(blue == "D"):
             SerialIOmbed.write("4\n") #Kjører motor2 nedover
+        elif(blue == "2"):
+            SerialIOmbed.write("0\n") # Begge stepper motorene står i ro
         else:
             SerialIOmbed.write("0\n") # Begge stepper motorene står i ro
 

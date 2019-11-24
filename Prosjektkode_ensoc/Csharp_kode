@@ -1,0 +1,225 @@
+# -*- coding: utf-8 -*-
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Drawing;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+using System.Threading; //Add threading support
+using System.Net; //Add network support
+using System.Net.Sockets; //Add Sockets support
+
+namespace MySecondProgram1
+{
+    public partial class Form1 : Form
+    {
+        public Form1()
+        {
+            InitializeComponent();
+        }
+
+        //Variabel for å motta UDP meldinger
+        public string strRecievedUDPMessage;
+        public void DoReciveUDP()
+        {
+            //UDP porten for å motta data fra Pi'en
+            UdpClient sock = new UdpClient(9050);
+            //Oppretter et IP-objekt for å motta data over UDP
+            IPEndPoint iep = new IPEndPoint(IPAddress.Any, 0);
+            while (true)
+            {
+                try
+                { //Ta imot data som UDP i en matrise
+                    byte[] data = sock.Receive(ref iep);
+                    //Konvertere dataen til en ASCII string
+                    strRecievedUDPMessage =
+                    Encoding.ASCII.GetString(data, 0, data.Length);
+                    //Kaller på funksjonen UdpDataRecieved
+                    this.Invoke(new EventHandler(this.UdpDataRecieved));
+                }
+                catch (Exception e) { }
+            }
+            sock.Close();
+        }
+        string alarm;
+        public void UdpDataRecieved(object sender, EventArgs e)
+        { 
+            alarm = strRecievedUDPMessage;
+            /*Betingelse for å oppdatere alarmstatus. Utløses
+            alarmen vil verdien sendes til C#
+            som vil oppdatere statusen i kontrollpanelet*/
+            if (alarm == "1")
+            {
+                Status_alarm.Checked = true;                
+            }
+            if(alarm == "0")
+            {
+                Status_alarm.Checked = false;                
+            }
+        }       
+        //Funksjon som genererer meldinger som sendes som UDP
+        private void checkBoxChanged()
+        {
+            textBox1.Text = "Kontroll";
+            {   /*Checkboxene blir aktivert ved knappetrykk.
+                 Dette er for å sette betingelser for motorstyring,
+                 alarmstatus og hvordan motorene skal styres. 
+                 Alle verdiene blir en lang string som er skilt
+                 med komma mellom hver verdi. Denne stringen
+                 blir i python gjort om til Comma
+                 separated values(CSV)*/
+                if (Left.Checked == true)
+                {
+                    textBox1.Text += ",1";
+                }
+                else
+                    textBox1.Text += ",0";
+                if (Right.Checked == true)
+                {
+                    textBox1.Text += ",1";
+                }
+                else
+                    textBox1.Text += ",0";
+                if (Up.Checked == true)
+                {
+                    textBox1.Text += ",1";
+                }
+                else
+                    textBox1.Text += ",0";
+                if (Down.Checked == true)
+                {
+                    textBox1.Text += ",1";
+                }
+                else
+                    textBox1.Text += ",0";
+                if (Status_alarm.Checked == true)
+                {
+                    textBox1.Text += ",1";
+                    ledBulb1.On = true;
+                }
+                else
+                {
+                    textBox1.Text += ",0";
+                    ledBulb1.On = false;
+                }
+                if (Ex_control.Checked == true)
+                {
+                    textBox1.Text += ",1";
+                }
+                else
+                    textBox1.Text += ",0";                
+            }
+                //Matrise for å lagre dataen som skal sendes som UDP
+                byte[] data = new byte[1024];
+                /*IP objekt som definerer IP adressen og porten
+                 som UDP dataen skal sendes til */
+                IPEndPoint ipep =
+                new IPEndPoint(IPAddress.Parse("10.0.0.87"), 9050);
+
+                /* Før man kan benytte en socket til å sende
+                 UDP meldinger, må socket'en settes i gang */
+                Socket server = new Socket(AddressFamily.InterNetwork,
+                SocketType.Dgram, ProtocolType.Udp);
+                
+                /* Dataen som er skrevet til textbox1 klargjøres
+                 og konverteres til riktig format for å sende som
+                 UDP melding til pi'en*/
+                string sendeString = textBox1.Text.ToString() ;
+                data = Encoding.ASCII.GetBytes(sendeString);
+                server.SendTo(data, data.Length, SocketFlags.None, ipep);            
+        }      
+        /* Tråd som har i oppgave å utføre
+         funksjonen DoReciveUDP. Denne tråden
+         er en Background thread som betyr
+         at tråden ikke holder resten av
+         programmet i gang. */
+        private Thread workerThread;
+        private void Form1_Load(object sender, EventArgs e)
+        {
+            workerThread = new Thread(this.DoReciveUDP);
+            workerThread.IsBackground = true; 
+                                              
+            workerThread.Start();
+            checkBoxChanged();
+        }
+              
+        /* Når trykknappen for motorstyring til venstre er trykket,
+        vil checkboxen aktivere en betingelse og sende den
+        som udp melding gjennom funksjonen checkBoxChanged.
+        Checkbox 1-4 gjelder for motorstyring, checkbox5 
+        gjelder for hva som styrer motorene og checkbox 6
+        styrer alarmstatus*/
+        private void Venstre_MouseDown(object sender, MouseEventArgs e)
+        {
+            Left.Checked = true;
+            checkBoxChanged();
+        }
+        private void Venstre_MouseUp(object sender, MouseEventArgs e)
+        {
+            Left.Checked = false;
+            checkBoxChanged();
+        }
+        private void Høyre_MouseDown(object sender, MouseEventArgs e)
+        {
+            Right.Checked = true;
+            checkBoxChanged();
+        }
+        private void Høyre_MouseUp(object sender, MouseEventArgs e)
+        {
+            Right.Checked = false;
+            checkBoxChanged();
+        }
+        private void Opp_MouseDown(object sender, MouseEventArgs e)
+        {
+            Up.Checked = true;
+            checkBoxChanged();
+        }
+        private void Opp_MouseUp(object sender, MouseEventArgs e)
+        {
+            Up.Checked = false;
+            checkBoxChanged();
+        }
+        private void Ned_MouseDown(object sender, MouseEventArgs e)
+        {
+            Down.Checked = true;
+            checkBoxChanged();
+        }
+        private void Ned_MouseUp(object sender, MouseEventArgs e)
+        {
+            Down.Checked = false;
+            checkBoxChanged();
+        }
+        private void CheckBox5_CheckedChanged(object sender, EventArgs e)
+        {
+            checkBoxChanged();
+        }
+        private void CheckBox6_CheckedChanged(object sender, EventArgs e)
+        {
+            checkBoxChanged();
+        }     
+        private void CheckBox1_CheckedChanged_1(object sender, EventArgs e)
+        {
+
+        }
+
+        private void CheckBox2_CheckedChanged(object sender, EventArgs e)
+        {
+
+        }
+
+        private void CheckBox3_CheckedChanged(object sender, EventArgs e)
+        {
+
+        }
+
+        private void CheckBox4_CheckedChanged(object sender, EventArgs e)
+        {
+
+        }
+
+      
+    }
+}
